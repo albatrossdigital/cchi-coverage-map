@@ -1,0 +1,217 @@
+<html>
+<head>
+<title>Rate Changes by County</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="http://leafletjs.com/dist/leaflet.css" />
+
+<style>
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+}
+
+.info {
+  padding: 3px 4px;
+  font: 10px/12px Arial, Helvetica, sans-serif;
+  background: white;
+  background: rgba(255,255,255,0.8);
+  box-shadow: 0 0 10px rgba(0,0,0,0.2);
+  border-radius: 5px;
+}
+
+.info h4 {
+  margin: 0 0 5px;
+  color: #777;
+}
+
+.legend {
+  text-align: left;
+  line-height: 12px;
+  color: #555;
+}
+
+.legend i {
+  width: 8px;
+  height: 8px;
+  float: left;
+  margin-right: 8px;
+  opacity: 0.7;
+}
+
+</style>
+
+</head>
+<body>
+
+<div id="map"></div>
+
+<script src="http://leafletjs.com/dist/leaflet.js"></script>
+<script src='leaflet.fullscreen/Control.FullScreen.js'></script>
+<link href='leaflet.fullscreen/Control.FullScreen.css' rel='stylesheet' />
+<script type="text/javascript" src="counties.geojson.js"></script>
+
+<script type="text/javascript">
+
+var map = L.map('map').setView([39.0, -105.50], 6.3);
+
+L.tileLayer('https://{s}.tiles.mapbox.com/v3/{id}/{z}/{x}/{y}.png', {
+
+  maxZoom: 18,
+  minZoom: 6.3,
+
+  attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, ' +
+    '<a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+    'Imagery © <a href="http://mapbox.com">Mapbox</a>' + ', Austin Montoya & Lynn Doan,' +
+    '<a href="http://cohealthinitiative.org"> Colorado Consumer Health Initiative</a> ',
+  id: 'examples.map-20v6611k'
+}).addTo(map);
+
+L.control.fullscreen().addTo(map);
+
+
+L.geoJson(countyData).addTo(map);
+
+
+// control that shows state info on hover
+
+var info = L.control();
+
+info.onAdd = function(map) {
+  this._div = L.DomUtil.create('div', 'info');
+  this.update();
+  return this._div;
+};
+
+
+info.update = function(props) {
+  this._div.innerHTML = '<font size="3">Rate Comparison by County</font>' + '<br>' + (props ?
+    '<b>' + props.NAMELSAD + '</b><br />' + ' 2014 Lowest Premium:  ' + props.CountyRate + '<br />' + ' 2015 Lowest Premium:  ' + props.CountyRa_1 + '<br />' + ' Rate Percent Change:  ' + props.CountyRa_2
+    : 'Hover over a county');
+};
+
+info.addTo(map);
+
+
+// get color depending on data
+function getColor(d) {
+  return d > "$300" ? '#4D004B' :
+  d > "$280" ? '#810F7C' :
+  d > "$260" ? '#8C6BB1' :
+  d > "$240" ? '#8C96C6' :
+  d > "$220" ? '#BFD3E6' :
+  d > "$200" ? '#E0ECF4' :
+  d > "$180" ? '#F7FCFD' :
+  '#FFFFFF';
+}
+
+
+
+function style(feature) {
+  return {
+    weight: 2,
+    opacity: 1,
+    color: 'white',
+    dashArray: '3',
+    fillOpacity: 0.7,
+    fillColor: getColor(feature.properties.CountyRa_1)
+  };
+}
+
+
+
+function highlightFeature(e) {
+
+  var layer = e.target;
+  layer.setStyle({
+    weight: 5,
+    color: '#666',
+    dashArray: '',
+    fillOpacity: 0.7
+  });
+
+  if (!L.Browser.ie && !L.Browser.opera) {
+    layer.bringToFront();
+  }
+
+  info.update(layer.feature.properties);
+}
+
+var geojson;
+
+function resetHighlight(e) {
+  geojson.resetStyle(e.target);
+  info.update();
+}
+
+
+
+function zoomToFeature(e) {
+  map.fitBounds(e.target.getBounds());
+}
+
+
+
+function onEachFeature(feature, layer) {
+  layer.on({
+    mouseover: highlightFeature,
+    mouseout: resetHighlight,
+    click: zoomToFeature
+  });
+}
+
+
+geojson = L.geoJson(countyData, {
+  style: style,
+  onEachFeature: onEachFeature
+}).addTo(map);
+
+
+map.on('enterFullscreen', function() {
+  map.setZoom(7.7);
+});
+
+
+map.on('exitFullscreen', function() {
+  map.setZoom(6.3);
+});
+
+
+var legend = L.control({
+  position: 'bottomright'
+});
+
+
+legend.onAdd = function(map) {
+
+  var div = L.DomUtil.create('div', 'info legend'),
+    grades = ["$180", "$200", "$220", "$240", "$260", "$280", "$300", ],
+    labels = ["Lowest <br> Premium Cost <br> in 2015"],
+    from, to;
+
+  for (var i = 0; i < grades.length; i++) {
+    from = grades[i];
+    to = grades[i + 1];
+
+    labels.push(
+      '<i style="background:' + getColor(from + 1) + '"></i> ' +
+      from + (to ? '&ndash;' + to : '+'));
+  }
+
+  div.innerHTML = labels.join('<br>');
+  return div;
+};
+
+legend.addTo(map);
+
+</script>
+
+</body>
+
+</html>
